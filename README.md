@@ -1,1 +1,1 @@
-Snake AI (In progress)
+Snake AI Visualizer (In progress)

@@ -25,11 +25,17 @@ snake = deque()
 
 food = (0, 0)
 
-class Direction(Enum):
-    UP = 0
+class Absolute_Direction(Enum):
+    NORTH = 0
+    EAST = 1
+    SOUTH = 2
+    WEST = 3
+
+'''class Relative_Direction(Enum):
+    FRONT = 0
     RIGHT = 1
-    DOWN = 2
-    LEFT = 3
+    BACK = 2
+    LEFT = 3'''
 
 # Set board to 2D list of dimensions HEIGHT x WIDTH, of all EMPTY
 def initialize_board():
@@ -84,14 +90,19 @@ def generate_food():
         food = random_point()
     place(Content.FOOD, food)
 
+def add_points(point1, point2):
+    x1, y1 = point1
+    x2, y2 = point2
+    return (x1 + x2, y1 + y2)
+
 # Add one SNAKE cell to the head, and remove one SNAKE cell to the tail if grow is false
-DIRECTION_TO_JUMP = {Direction.UP: (0, -1), Direction.RIGHT: (1, 0), Direction.DOWN: (0, 1), Direction.LEFT: (-1, 0)}
+DIRECTION_TO_JUMP = {Absolute_Direction.NORTH: (0, -1), Absolute_Direction.EAST: (1, 0), Absolute_Direction.SOUTH: (0, 1), Absolute_Direction.WEST: (-1, 0)}
 def move(direction):
     grow = False
     jump = DIRECTION_TO_JUMP[direction]
     snake_head = snake[-1]
 
-    new_snake_head = (snake_head[0] + jump[0], snake_head[1] + jump[1])
+    new_snake_head = add_points(snake_head, jump)
     snake.append(new_snake_head)
 
     if inBounds(new_snake_head) and get(new_snake_head) != Content.SNAKE:
@@ -115,6 +126,18 @@ def lose():
 
 def win():
     print("WIN")
+
+# Compute the distances from the snake head to the closest obstruction in a certain absolute direction
+def compute_distance_to_closest_obstruction(absolute_direction):
+    jump = DIRECTION_TO_JUMP[absolute_direction]
+    point_to_check = add_points(snake[-1], jump)
+    distance = 1
+    while inBounds(point_to_check):
+        if get(point_to_check) != Content.EMPTY:
+            return distance
+        else:
+            point_to_check = add_points(point_to_check, jump)
+            distance += 1
 
 # To be rendered
 cells = None
@@ -141,13 +164,13 @@ def update_grid(data):
 
 def on_key(event):
     if event.keysym == "Up":
-        move(Direction.UP)
+        move(Absolute_Direction.NORTH)
     elif event.keysym == "Down":
-        move(Direction.DOWN)
+        move(Absolute_Direction.SOUTH)
     elif event.keysym == "Left":
-        move(Direction.LEFT)
+        move(Absolute_Direction.WEST)
     elif event.keysym == "Right":
-        move(Direction.RIGHT)
+        move(Absolute_Direction.EAST)
     
     update_grid(board)
 

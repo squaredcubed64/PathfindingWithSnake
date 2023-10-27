@@ -1,7 +1,6 @@
 package project.model;
 
-import project.enums.Content;
-import project.enums.Result;
+import project.enums.*;
 
 import java.awt.*;
 
@@ -14,4 +13,6 @@ public interface Model {
 	Result moveRight();
 	Point getFoodLocation();
 	Point getSnakeHeadLocation();
+	Direction getHeading();
+	Action nextAction();
 }

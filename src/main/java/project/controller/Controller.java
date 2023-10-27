@@ -11,4 +11,5 @@ public interface Controller {
 	void moveLeft();
 	void moveRight();
 	void render();
+	void startGame();
 }

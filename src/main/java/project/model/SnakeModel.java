@@ -1,7 +1,7 @@
 package project.model;
 
-import project.enums.Content;
-import project.enums.Result;
+import project.enums.*;
+import project.model.*;
 
 import java.awt.Point;
 import java.util.*;
@@ -15,6 +15,7 @@ public class SnakeModel implements Model {
 	// Where the snake is currently facing (i.e. in which direction it lasted moved)
 	private Direction heading;
 	private Point foodLocation;
+	private Brain brain;
 
 	// Takes a rand to allow for deterministic results while testing
 	public SnakeModel(int WIDTH, int HEIGHT, Random rand) {
@@ -23,6 +24,7 @@ public class SnakeModel implements Model {
 		this.grid = new Content[HEIGHT][WIDTH];
 		this.rand = rand;
 		this.heading = Direction.EAST;
+		this.brain = new SimpleBrain();
 
 		// Set grid to all EMPTY
 		for (int y = 0; y < HEIGHT; y++) {
@@ -57,10 +59,29 @@ public class SnakeModel implements Model {
 		grid[point.y][point.x] = content;
 	}
 
-	// grid can be mutated by external code, but this shouldn't happen
+	public static boolean[][] deepCopy(boolean[][] original) {
+		if (original == null) {
+			return null;
+		}
+
+		final boolean[][] result = new boolean[original.length][];
+		for (int i = 0; i < original.length; i++) {
+			result[i] = Arrays.copyOf(original[i], original[i].length);
+		}
+		return result;
+	}
+
+	// Return a deepcopy of the grid to avoid external manipulation
 	@Override
 	public Content[][] getGrid() {
-		return grid;
+		if (grid == null) {
+			return null;
+		}
+		final Content[][] copy = new Content[grid.length][grid[0].length];
+		for (int i = 0; i < grid.length; i++) {
+			System.arraycopy(grid[i], 0, copy[i], 0, grid[i].length);
+		}
+		return copy;
 	}
 
 	public Content get(Point point) {
@@ -130,11 +151,21 @@ public class SnakeModel implements Model {
 
 	@Override
 	public Point getFoodLocation() {
-		return foodLocation;
+		return (Point) foodLocation.clone();
 	}
 
 	@Override
 	public Point getSnakeHeadLocation() {
-		return snake.getHead();
+		return (Point) snake.getHead().clone();
+	}
+
+	public Direction getHeading() {
+		return heading;
+	}
+
+	// Calls getters to ensure brain doesn't mutate fields
+	@Override
+	public Action nextAction() {
+		return brain.nextAction(getGrid(), getSnakeHeadLocation(), heading, getFoodLocation());
 	}
 }

@@ -13,6 +13,6 @@ public class SnakeGame {
 		View view = new TextView();
 		Controller controller = new SnakeController(model, view);
 
-		controller.render();
+		controller.startGame();
 	}
 }

@@ -1,1 +1,1 @@
-Snake AI Visualizer (In progress)
+Pathfinding with Snake (In progress)

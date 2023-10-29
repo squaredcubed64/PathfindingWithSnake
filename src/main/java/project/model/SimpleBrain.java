@@ -6,6 +6,8 @@ import project.enums.Content;
 import java.awt.*;
 import java.util.HashMap;
 
+// Tells the snake to simply turn LEFT upon reaching an obstruction.
+// Causes the snake to travel around the border of the grid
 public class SimpleBrain implements Brain {
 	public SimpleBrain() {
 

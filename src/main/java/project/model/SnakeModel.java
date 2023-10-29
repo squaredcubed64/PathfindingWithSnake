@@ -74,14 +74,17 @@ public class SnakeModel implements Model {
 	// Return a deepcopy of the grid to avoid external manipulation
 	@Override
 	public Content[][] getGrid() {
-		if (grid == null) {
+		return grid;
+
+		// Return deepcopy (slow, but avoids external manipulation
+		/*if (grid == null) {
 			return null;
 		}
 		final Content[][] copy = new Content[grid.length][grid[0].length];
 		for (int i = 0; i < grid.length; i++) {
 			System.arraycopy(grid[i], 0, copy[i], 0, grid[i].length);
 		}
-		return copy;
+		return copy;*/
 	}
 
 	public Content get(Point point) {
@@ -166,6 +169,6 @@ public class SnakeModel implements Model {
 	// Calls getters to ensure brain doesn't mutate fields
 	@Override
 	public Action nextAction() {
-		return brain.nextAction(getGrid(), getSnakeHeadLocation(), heading, getFoodLocation());
+		return brain.nextAction(grid, getSnakeHeadLocation(), heading, getFoodLocation());
 	}
 }

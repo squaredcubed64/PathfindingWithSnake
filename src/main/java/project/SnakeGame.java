@@ -10,7 +10,7 @@ public class SnakeGame {
 
 	public static void main(String[] args) {
 		Model model = new SnakeModel(WIDTH, HEIGHT);
-		View view = new TextView();
+		View view = new SnakeView(WIDTH, HEIGHT);
 		Controller controller = new SnakeController(model, view);
 
 		controller.startGame();

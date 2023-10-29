@@ -6,6 +6,8 @@ import project.enums.*;
 import java.util.HashMap;
 import java.awt.Point;
 
+import static project.utils.Utils.*;
+
 public class MetricCalculator {
 	// Calculates the distance to the nearest obstruction in each cardinal direction
 	// A distance of 1 means that it is directly next to the snake in that direction
@@ -23,12 +25,5 @@ public class MetricCalculator {
 			distances.put(direction, distance);
 		}
 		return distances;
-	}
-
-	// Precondition: grid is rectangular
-	private static boolean inBounds(Content[][] grid, Point point) {
-		int height = grid.length;
-		int width = grid[0].length;
-		return (0 <= point.x && point.x < width && 0 <= point.y && point.y < height);
 	}
 }

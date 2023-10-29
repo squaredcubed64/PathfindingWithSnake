@@ -6,5 +6,7 @@ public enum Action {
 	// Turn right and move in that direction
 	RIGHT,
 	// Simply move forward
-	NOTHING
+	FORWARD,
+	// After reaching FOOD
+	WAIT
 }

@@ -21,7 +21,7 @@ public class SimpleBrain implements Brain {
 		if (distances.get(heading) == 1) {
 			return Action.LEFT;
 		} else {
-			return Action.NOTHING;
+			return Action.FORWARD;
 		}
 	}
 

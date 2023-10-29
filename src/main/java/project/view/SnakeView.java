@@ -18,6 +18,7 @@ public class SnakeView extends JFrame implements View {
 		CONTENT_TO_COLOR.put(Content.EMPTY, Color.WHITE);
 		CONTENT_TO_COLOR.put(Content.SNAKE, Color.BLACK);
 		CONTENT_TO_COLOR.put(Content.FOOD, Color.RED);
+		CONTENT_TO_COLOR.put(Content.PATH, Color.GREEN);
 	}
 	private static final Color BORDER_COLOR = Color.BLACK;
 
@@ -56,22 +57,35 @@ public class SnakeView extends JFrame implements View {
 		return cell;
 	}
 
-	public JPanel getComponent(int x, int y) {
+	private JPanel getComponent(int x, int y) {
 		return (JPanel) getContentPane().getComponent(y * GRID_WIDTH + x);
 	}
 
-	private void updateComponents(Content[][] grid) {
+	// Computes a color to represent a distance from the snake head, as the pathfinding algorithm is calculating
+	// Darker colors represent longer distances
+	// Distances of MAX_VALUE represent cells that haven't been calculated
+	private Color computeColor(int distance) {
+		if (distance == Integer.MAX_VALUE) {
+			return Color.WHITE;
+		}
+		int brightness = Math.max(255 - 30 * distance, 0);
+		return new Color(brightness, brightness, brightness);
+	}
+	private void updateComponents(Content[][] grid, int[][] distances) {
 		for (int y = 0; y < GRID_HEIGHT; y++) {
 			for (int x = 0; x < GRID_WIDTH; x++) {
 				JPanel cell = getComponent(x, y);
 				cell.setBackground(CONTENT_TO_COLOR.get(grid[y][x]));
+				if (grid[y][x] == Content.EMPTY) {
+					cell.setBackground(computeColor(distances[y][x]));
+				}
 			}
 		}
 	}
 
 	@Override
-	public void render(Content[][] grid) {
-		updateComponents(grid);
+	public void render(Content[][] grid, int[][] distances) {
+		updateComponents(grid, distances);
 		pack();
 		setLocationRelativeTo(null); // Center the frame
 	}

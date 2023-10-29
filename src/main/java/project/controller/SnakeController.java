@@ -2,30 +2,40 @@ package project.controller;
 
 import project.enums.*;
 import project.model.*;
+import static project.utils.Utils.*;
 import project.view.*;
 
+import java.awt.*;
 import java.util.*;
 
 public class SnakeController implements Controller {
-	private Model model;
-	private View view;
+	private final Model model;
+	private final View view;
 	private Result lastResult;
-	private static final int MOVE_DELAY_MILLISECONDS = 1000;
+	private static final int MOVE_DELAY_MILLISECONDS = 125;
+	private final int[][] MAX_DISTANCES;
+	private Content[][] gridWithPath;
+	private ArrayList<Point> reversePath;
+	private Mode mode;
 
 	public SnakeController(Model model, View view) {
 		this.model = model;
+		model.generateAlgorithm();
 		this.view = view;
 		this.lastResult = null;
+		this.MAX_DISTANCES = maxArray(model.getWidth(), model.getHeight());
+		this.mode = Mode.CALCULATE;
 	}
 
-	// Send the result to view so it can decide what to do
+	// Send the result to view, so it can decide what to do
 	private void interpretResult(Result result) {
 		switch (result) {
 			case WIN -> view.win();
 			case LOSE -> view.lose();
-			case NOTHING -> view.render(model.getGrid());
+			case EAT, NOTHING -> view.render(model.getGrid(), MAX_DISTANCES);
 			default -> {
-				System.err.println("lastResult is null");
+				System.err.println("result in run() must be WIN, LOSE, EAT, or NOTHING");
+				System.exit(1);
 			}
 		}
 	}
@@ -48,38 +58,47 @@ public class SnakeController implements Controller {
 		interpretResult(lastResult);
 	}
 
-	@Override
-	public void render() {
-		view.render(model.getGrid());
+	private Content[][] copyOf(Content[][] grid) {
+		if (grid == null) {
+			return null;
+		}
+		final Content[][] copy = new Content[grid.length][grid[0].length];
+		for (int i = 0; i < grid.length; i++) {
+			System.arraycopy(grid[i], 0, copy[i], 0, grid[i].length);
+		}
+		return copy;
 	}
 
 	class StepForward extends TimerTask {
 		public void run() {
-			Action nextMove = model.nextAction();
-			Result result = null;
-			switch (nextMove) {
-				case LEFT -> {
-					result = model.moveLeft();
+			if (model.getMode() == Mode.FOLLOW) {
+				Action nextAction = model.nextAction();
+				Result result = null;
+				switch (nextAction) {
+					case LEFT -> result = model.moveLeft();
+					case RIGHT -> result = model.moveRight();
+					case FORWARD -> result = model.moveForward();
+					case WAIT -> {
+						model.generateAlgorithm();
+						mode = Mode.CALCULATE;
+						result = Result.EAT;
+					}
+					default -> {
+						System.err.println("Invalid nextAction passed to run()");
+						System.exit(1);
+					}
 				}
-				case RIGHT -> {
-					result = model.moveRight();
-				}
-				case NOTHING -> {
-					result = model.moveForward();
-				}
-				default -> {
-					System.err.println("Invalid nextMove passed to run()");
-					System.exit(1);
-				}
+
+				// Have the view act based on the result
+				interpretResult(result);
 			}
-			// Have the view interpret the result
-			switch (result) {
-				case WIN -> view.win();
-				case LOSE -> view.lose();
-				case NOTHING -> view.render(model.getGrid());
-				default -> {
-					System.err.println("result in run() must be WIN, LOSE, or NOTHING");
-					System.exit(1);
+			else {
+				int[][] distances = model.computeStep();
+				if (distances != null) {
+					view.render(model.getGrid(), distances);
+				} else {
+					mode = Mode.FOLLOW;
+					view.render(model.getGrid(), MAX_DISTANCES);
 				}
 			}
 		}

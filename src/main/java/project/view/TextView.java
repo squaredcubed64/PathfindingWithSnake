@@ -14,7 +14,7 @@ public class TextView implements View {
 	}
 
 	@Override
-	public void render(Content[][] grid) {
+	public void render(Content[][] grid, int[][] distances) {
 		// Arrange content characters in a grid shape
 		StringBuilder sb = new StringBuilder();
 		for (Content[] row : grid) {

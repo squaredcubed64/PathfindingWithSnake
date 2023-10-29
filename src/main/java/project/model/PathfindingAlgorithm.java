@@ -1,9 +1,10 @@
 package project.model;
 
-import project.enums.*;
-
 import java.awt.*;
+import java.util.*;
 
 public interface PathfindingAlgorithm {
-	Point[] doStep(Content[][] grid, Point snakeHeadLocation);
+	// Should return null until the shortest path is found, at which point it is returned
+	int[][] computeStep();
+	ArrayList<Point> getReversePath();
 }

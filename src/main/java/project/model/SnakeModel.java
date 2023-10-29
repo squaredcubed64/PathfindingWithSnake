@@ -1,65 +1,65 @@
 package project.model;
 
 import project.enums.*;
-import project.model.*;
+import static project.utils.Utils.*;
 
 import java.awt.Point;
 import java.util.*;
 
 public class SnakeModel implements Model {
-	private final int WIDTH;
-	private final int HEIGHT;
-	private Content[][] grid;
-	private Snake snake;
+	private final int width;
+	private final int height;
+	private final Content[][] grid;
+	private final Snake snake;
 	private final Random rand;
 	// Where the snake is currently facing (i.e. in which direction it lasted moved)
 	private Direction heading;
 	private Point foodLocation;
-	private Brain brain;
+	private PathfindingAlgorithm algorithm;
+	private Mode mode;
+	// Will be followed if mode is FOLLOW
+	private ArrayList<Point> reversePath;
+	private static final Mode DEFAULT_MODE = Mode.CALCULATE;
 
 	// Takes a rand to allow for deterministic results while testing
-	public SnakeModel(int WIDTH, int HEIGHT, Random rand) {
-		this.WIDTH = WIDTH;
-		this.HEIGHT = HEIGHT;
-		this.grid = new Content[HEIGHT][WIDTH];
+	public SnakeModel(int width, int height, Random rand) {
+		this.width = width;
+		this.height = height;
+		this.grid = new Content[height][width];
 		this.rand = rand;
 		this.heading = Direction.EAST;
-		this.brain = new SimpleBrain();
+		this.mode = DEFAULT_MODE;
 
 		// Set grid to all EMPTY
-		for (int y = 0; y < HEIGHT; y++) {
-			for (int x = 0; x < WIDTH; x++) {
+		for (int y = 0; y < height; y++) {
+			for (int x = 0; x < width; x++) {
 				grid[y][x] = Content.EMPTY;
 			}
 		}
 
 		// Generate snake
-		Point snakeHeadLocation = new Point(WIDTH / 4, HEIGHT / 2);
-		place(Content.SNAKE, snakeHeadLocation);
+		Point snakeHeadLocation = new Point(width / 4, height / 2);
+		place(Content.SNAKE, snakeHeadLocation, grid);
 		snake = new Snake(snakeHeadLocation);
 
 		// Generate food
-		foodLocation = new Point(3 * WIDTH / 4, HEIGHT / 2);
-		place(Content.FOOD, foodLocation);
+		foodLocation = new Point(3 * width / 4, height / 2);
+		place(Content.FOOD, foodLocation, grid);
 	}
 
 	// Basic constructor
-	public SnakeModel(int WIDTH, int HEIGHT) {
-		this(WIDTH, HEIGHT, new Random());
+	public SnakeModel(int width, int height) {
+		this(width, height, new Random());
 	}
 
 
 	private Point randomPoint() {
-		int x = rand.nextInt(WIDTH);
-		int y = rand.nextInt(HEIGHT);
+		int x = rand.nextInt(width);
+		int y = rand.nextInt(height);
 		return new Point(x, y);
 	}
 
-	private void place(Content content, Point point) {
-		grid[point.y][point.x] = content;
-	}
-
-	public static boolean[][] deepCopy(boolean[][] original) {
+	/*public static boolean[][] deepCopy(boolean[][] original) {
 		if (original == null) {
 			return null;
 		}
@@ -69,7 +69,7 @@ public class SnakeModel implements Model {
 			result[i] = Arrays.copyOf(original[i], original[i].length);
 		}
 		return result;
-	}
+	}*/
 
 	// Return a deepcopy of the grid to avoid external manipulation
 	@Override
@@ -100,12 +100,12 @@ public class SnakeModel implements Model {
 			foodLocation = randomPoint();
 		}
 
-		place(Content.FOOD, foodLocation);
+		place(Content.FOOD, foodLocation, grid);
 	}
 
 	private boolean inBounds(Point point) {
-		return (0 <= point.x && point.x < WIDTH &&
-		        0 <= point.y && point.y < HEIGHT);
+		return (0 <= point.x && point.x < width &&
+		        0 <= point.y && point.y < height);
 	}
 
 	// Returns
@@ -119,22 +119,23 @@ public class SnakeModel implements Model {
 			return Result.LOSE;
 		}
 		// If snake is at max size, win
-		if (snake.size() == WIDTH * HEIGHT) {
+		if (snake.size() == width * height) {
 			return Result.WIN;
 		}
 
 		// If snake just ate, place the new snake head and generate new food
 		if (get(head) == Content.FOOD){
-			place(Content.SNAKE, head);
+			place(Content.SNAKE, head, grid);
 			generateFood();
+			return Result.EAT;
 		}
 		// If snake didn't just eat, place the new snake head and move tail
 		else {
-			place(Content.SNAKE, head);
+			place(Content.SNAKE, head, grid);
 			Point old_snake_tail = snake.moveTail();
-			place(Content.EMPTY, old_snake_tail);
+			place(Content.EMPTY, old_snake_tail, grid);
+			return Result.NOTHING;
 		}
-		return Result.NOTHING;
 	}
 
 	@Override
@@ -166,9 +167,89 @@ public class SnakeModel implements Model {
 		return heading;
 	}
 
-	// Calls getters to ensure brain doesn't mutate fields
+	private Point add(Point point1, Point point2) {
+		return new Point(point1.x + point2.x, point1.y + point2.y);
+	}
+
 	@Override
 	public Action nextAction() {
-		return brain.nextAction(grid, getSnakeHeadLocation(), heading, getFoodLocation());
+		if (mode != Mode.FOLLOW) {
+			System.err.println("nextAction called when mode is not FOLLOW");
+			throw new AssertionError();
+		}
+		else {
+			if (reversePath.isEmpty()) {
+				generateAlgorithm();
+				mode = Mode.CALCULATE;
+				return Action.WAIT;
+			}
+			Point nextPointOnPath = reversePath.remove(reversePath.size() - 1);
+
+			Point pointAtLeftTurn = add(getSnakeHeadLocation(), heading.left().jump);
+			// Check which move leads to the next cell in the path
+			if (pointAtLeftTurn.equals(nextPointOnPath)) {
+				return Action.LEFT;
+			}
+
+			Point pointInFront = add(getSnakeHeadLocation(), heading.jump);
+			if (pointInFront.equals(nextPointOnPath)) {
+				return Action.FORWARD;
+			}
+
+			Point pointAtRightTurn = add(getSnakeHeadLocation(), heading.right().jump);
+			if (pointAtRightTurn.equals(nextPointOnPath)) {
+				return Action.RIGHT;
+			}
+		}
+		System.err.println("No action leads to the next point in the path");
+		throw new AssertionError();
+	}
+
+	@Override
+	public Mode getMode() {
+		return mode;
+	}
+
+	@Override
+	public int[][] computeStep() {
+		if (mode != Mode.CALCULATE) {
+			System.err.println("computeStep called when mode is not CALCULATE");
+			throw new AssertionError();
+		}
+
+		int[][] distances = algorithm.computeStep();
+
+		// If a path was found
+		if (distances == null) {
+			reversePath = algorithm.getReversePath();
+			// Mark the cells in reversePath on the grid
+			for (Point point : reversePath) {
+				if (get(point) != Content.FOOD) {
+					place(Content.PATH, point, grid);
+				}
+			}
+			mode = Mode.FOLLOW;
+		}
+
+		return distances;
+	}
+
+	@Override
+	public int getWidth() {
+		return width;
+	}
+
+	@Override
+	public int getHeight() {
+		return height;
+	}
+
+	public ArrayList<Point> getReversePath() {
+		return reversePath;
+	}
+
+	@Override
+	public void generateAlgorithm() {
+		algorithm = new DijkstraAlgorithm(grid, snake.getHead());
 	}
 }

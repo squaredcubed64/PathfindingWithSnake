@@ -15,8 +15,8 @@ public class SimpleBrain implements Brain {
 
 	// Turns LEFT upon reaching an obstruction
 	@Override
-	public Action nextAction(Content[][] grid, Point snakeHeadLocation, Direction heading, Point foodLocation) {
-		HashMap<Direction, Integer> distances =
+	public Action nextAction(Content[][] grid, Point snakeHeadLocation, AbsoluteDirection heading, Point foodLocation) {
+		HashMap<AbsoluteDirection, Integer> distances =
 				MetricCalculator.calculateDistancesToNextObstruction(grid, snakeHeadLocation);
 		if (distances.get(heading) == 1) {
 			return Action.LEFT;

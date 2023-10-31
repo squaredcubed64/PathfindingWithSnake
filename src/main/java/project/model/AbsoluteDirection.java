@@ -2,7 +2,7 @@ package project.model;
 
 import java.awt.Point;
 
-public enum Direction {
+public enum AbsoluteDirection {
 	NORTH(0, -1),
 	EAST(1, 0),
 	SOUTH(0, 1),
@@ -12,29 +12,27 @@ public enum Direction {
 	public final int dy;
 	public final Point jump;
 
-	Direction(int dx, int dy) {
+	AbsoluteDirection(int dx, int dy) {
 		this.dx = dx;
 		this.dy = dy;
 		this.jump = new Point(dx, dy);
 	}
 
-	Direction right() {
+	AbsoluteDirection right() {
 		return switch (this) {
 			case NORTH -> EAST;
 			case EAST -> SOUTH;
 			case SOUTH -> WEST;
 			case WEST -> NORTH;
-			default -> null;
 		};
 	}
 
-	Direction left() {
+	AbsoluteDirection left() {
 		return switch (this) {
 			case NORTH -> WEST;
 			case WEST -> SOUTH;
 			case SOUTH -> EAST;
 			case EAST -> NORTH;
-			default -> null;
 		};
 	}
 }

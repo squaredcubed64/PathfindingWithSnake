@@ -1,7 +1,5 @@
 package project.model;
 
-import project.controller.*;
-
 import java.awt.Point;
 import java.util.*;
 
@@ -13,9 +11,9 @@ public class Snake {
 		this.body.add(head);
 	}
 
-	public void moveHead(Direction direction) {
+	public void moveHead(AbsoluteDirection absoluteDirection) {
 		Point head = body.getLast();
-		Point newHead = new Point(head.x + direction.dx, head.y + direction.dy);
+		Point newHead = new Point(head.x + absoluteDirection.dx, head.y + absoluteDirection.dy);
 		body.add(newHead);
 	}
 

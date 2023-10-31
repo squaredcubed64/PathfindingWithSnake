@@ -1,9 +1,14 @@
 package project.model;
 
 import project.enums.*;
+import project.utils.Utils;
+
 import static project.utils.Utils.*;
 
 import java.awt.Point;
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.IOException;
 import java.util.*;
 
 public class SnakeModel implements Model {
@@ -13,43 +18,103 @@ public class SnakeModel implements Model {
 	private final Snake snake;
 	private final Random rand;
 	// Where the snake is currently facing (i.e. in which direction it lasted moved)
-	private Direction heading;
+	private AbsoluteDirection heading;
 	private Point foodLocation;
 	private PathfindingAlgorithm algorithm;
 	private Mode mode;
 	// Will be followed if mode is FOLLOW
 	private ArrayList<Point> reversePath;
 	private static final Mode DEFAULT_MODE = Mode.CALCULATE;
+	private int[][] distances;
+	private PathfindingAlgorithmType algorithmType;
 
-	// Takes a rand to allow for deterministic results while testing
-	public SnakeModel(int width, int height, Random rand) {
-		this.width = width;
-		this.height = height;
-		this.grid = new Content[height][width];
-		this.rand = rand;
-		this.heading = Direction.EAST;
-		this.mode = DEFAULT_MODE;
-
-		// Set grid to all EMPTY
+	private static Content[][] generateRandomGrid(int width, int height, double densityValue,
+	                                              HashSet<Point> reservedPoints, Random rand) {
+		Content[][] out = new Content[height][width];
 		for (int y = 0; y < height; y++) {
 			for (int x = 0; x < width; x++) {
-				grid[y][x] = Content.EMPTY;
+				if (!reservedPoints.contains(new Point(x, y)) && rand.nextDouble() < densityValue) {
+					out[y][x] = Content.WALL;
+				} else {
+					out[y][x] = Content.EMPTY;
+				}
 			}
 		}
+		return out;
+	}
 
-		// Generate snake
+	private static Content[][] loadPresetGrid(int size) throws IOException {
+		BufferedReader br = new BufferedReader(new FileReader("presets/" + size + ".txt"));
+		Content[][] grid = new Content[size][size];
+
+		String line;
+		for (int y = 0; y < size; y++) {
+			line = br.readLine();
+			for (int x = 0; x < line.length(); x++) {
+				if (line.charAt(x) == 'W') {
+					grid[y][x] = Content.WALL;
+				} else {
+					grid[y][x] = Content.EMPTY;
+				}
+			}
+		}
+		return grid;
+	}
+
+	// Takes a rand to allow for deterministic results while testing
+	public SnakeModel(int width, int height, WallType wallType, PathfindingAlgorithmType algorithmType, Random rand) {
+		this.width = width;
+		this.height = height;
+		this.rand = rand;
+		this.heading = AbsoluteDirection.EAST;
+		this.mode = DEFAULT_MODE;
+
+		// Generate snake and food
 		Point snakeHeadLocation = new Point(width / 4, height / 2);
-		place(Content.SNAKE, snakeHeadLocation, grid);
 		snake = new Snake(snakeHeadLocation);
-
-		// Generate food
 		foodLocation = new Point(3 * width / 4, height / 2);
+
+		HashSet<Point> reservedPoints = new HashSet<>();
+		reservedPoints.add(snakeHeadLocation);
+		reservedPoints.add(foodLocation);
+
+		// Generate grid with WALLs, SNAKE, and FOOD
+		Content[][] generatedGrid = null;
+		switch (wallType) {
+			case ZERO -> generatedGrid = Utils.emptyGrid(width, height);
+			case RANDOM -> generatedGrid = generateRandomGrid(width, height, .25, reservedPoints, rand);
+			// Only valid for width = 10
+			case PRESET -> {
+				if (width == 10) {
+					try {
+						generatedGrid = loadPresetGrid(width);
+					} catch (IOException e) {
+						System.err.println("No such preset file");
+						System.exit(1);
+					}
+				}
+				else {
+					System.err.println("Invalid grid size for generating preset");
+					System.exit(1);
+				}
+			}
+			default -> {
+				System.err.println("Invalid wallType");
+				System.exit(1);
+			}
+		}
+		this.grid = generatedGrid;
+
+		place(Content.SNAKE, snakeHeadLocation, grid);
 		place(Content.FOOD, foodLocation, grid);
+
+		this.algorithmType = algorithmType;
+		generateAlgorithm();
 	}
 
 	// Basic constructor
-	public SnakeModel(int width, int height) {
-		this(width, height, new Random());
+	public SnakeModel(int width, int height, WallType wallType, PathfindingAlgorithmType algorithmType) {
+		this(width, height, wallType, algorithmType, new Random());
 	}
 
 
@@ -71,7 +136,6 @@ public class SnakeModel implements Model {
 		return result;
 	}*/
 
-	// Return a deepcopy of the grid to avoid external manipulation
 	@Override
 	public Content[][] getGrid() {
 		return grid;
@@ -108,63 +172,57 @@ public class SnakeModel implements Model {
 		        0 <= point.y && point.y < height);
 	}
 
-	// Returns
-	private Result moveSnake(Direction direction) {
-		snake.moveHead(direction);
-		heading = direction;
+	public void doAction(Action action) {
+		switch (action) {
+			case LEFT -> moveSnake(heading.left());
+			case FORWARD -> moveSnake(heading);
+			case RIGHT -> moveSnake(heading.right());
+			case WAIT -> generateAlgorithm();
+			default -> {
+				System.err.println("Invalid nextAction passed to doAction()");
+				System.exit(1);
+			}
+		}
+	}
+
+	@Override
+	public int[][] getDistances() {
+		return distances;
+	}
+
+	@Override
+	public void setPathfindingAlgorithm(PathfindingAlgorithmType algorithmClass) {
+		this.algorithmType = algorithmClass;
+	}
+
+	private void moveSnake(AbsoluteDirection absoluteDirection) {
+		snake.moveHead(absoluteDirection);
+		heading = absoluteDirection;
 		Point head = snake.getHead();
 
-		// If snake hits the wall or itself, lose
+		// If snake hits the wall or itself, call an error
+		// Shouldn't happen, because moveSnake() is only called when a path from head to FOOD is known
 		if (!inBounds(head) || get(head) == Content.SNAKE) {
-			return Result.LOSE;
-		}
-		// If snake is at max size, win
-		if (snake.size() == width * height) {
-			return Result.WIN;
+			System.err.println("Snake attempted to move out of bounds");
+			System.exit(1);
 		}
 
 		// If snake just ate, place the new snake head and generate new food
 		if (get(head) == Content.FOOD){
 			place(Content.SNAKE, head, grid);
 			generateFood();
-			return Result.EAT;
 		}
 		// If snake didn't just eat, place the new snake head and move tail
 		else {
 			place(Content.SNAKE, head, grid);
 			Point old_snake_tail = snake.moveTail();
 			place(Content.EMPTY, old_snake_tail, grid);
-			return Result.NOTHING;
 		}
-	}
-
-	@Override
-	public Result moveForward() {
-		return moveSnake(heading);
-	}
-
-	@Override
-	public Result moveLeft() {
-		return moveSnake(heading.left());
-	}
-
-	@Override
-	public Result moveRight() {
-		return moveSnake(heading.right());
-	}
-
-	@Override
-	public Point getFoodLocation() {
-		return (Point) foodLocation.clone();
 	}
 
 	@Override
 	public Point getSnakeHeadLocation() {
 		return (Point) snake.getHead().clone();
-	}
-
-	public Direction getHeading() {
-		return heading;
 	}
 
 	private Point add(Point point1, Point point2) {
@@ -211,16 +269,15 @@ public class SnakeModel implements Model {
 	}
 
 	@Override
-	public int[][] computeStep() {
+	public AlgorithmStepResult computeStep() {
 		if (mode != Mode.CALCULATE) {
-			System.err.println("computeStep called when mode is not CALCULATE");
-			throw new AssertionError();
+			throw new AssertionError("computeStep called when mode is not CALCULATE");
 		}
 
-		int[][] distances = algorithm.computeStep();
+		AlgorithmStepResult result = algorithm.computeStep();
 
 		// If a path was found
-		if (distances == null) {
+		if (result == AlgorithmStepResult.FOUND) {
 			reversePath = algorithm.getReversePath();
 			// Mark the cells in reversePath on the grid
 			for (Point point : reversePath) {
@@ -231,7 +288,8 @@ public class SnakeModel implements Model {
 			mode = Mode.FOLLOW;
 		}
 
-		return distances;
+		distances = algorithm.getDistances();
+		return result;
 	}
 
 	@Override
@@ -244,12 +302,11 @@ public class SnakeModel implements Model {
 		return height;
 	}
 
-	public ArrayList<Point> getReversePath() {
-		return reversePath;
-	}
-
 	@Override
 	public void generateAlgorithm() {
-		algorithm = new DijkstraAlgorithm(grid, snake.getHead());
+		switch (algorithmType) {
+			case DIJKSTRA -> algorithm = new DijkstraAlgorithm(grid, snake.getHead());
+			case ASTAR -> algorithm = null; //new AStarAlgorithm(grid, snake.getHead());
+		}
 	}
 }

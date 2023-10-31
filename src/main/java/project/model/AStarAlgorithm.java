@@ -1,24 +1,26 @@
-package project.model;
+/*package project.model;
 
-import project.enums.*;
+import project.enums.Content;
 
 import java.awt.*;
 import java.util.*;
 
 import static project.utils.Utils.inBounds;
 
-public class DijkstraAlgorithm implements PathfindingAlgorithm {
+public class AStarAlgorithm implements PathfindingAlgorithm {
 	private final Content[][] grid;
 	private final Point source;
+	private final Point destination;
 	private final int[][] distances;
-	private final LinkedList<Point> q;
+	private final PriorityQueue<Point> q;
 	// Keeps track of the last point on the path from the source to this node
 	private final HashMap<Point, Point> previous;
 	private ArrayList<Point> reversePath;
 
-	public DijkstraAlgorithm(Content[][] grid, Point source) {
+	public AStarAlgorithm(Content[][] grid, Point source, Point destination) {
 		this.grid = grid;
 		this.source = source;
+		this.destination = destination;
 		this.previous = new HashMap<>();
 
 		int width = grid[0].length;
@@ -31,8 +33,13 @@ public class DijkstraAlgorithm implements PathfindingAlgorithm {
 		}
 		setDistance(source, 0);
 
-		q = new LinkedList<>();
-		q.addLast(source);
+		// Should make a custom class to hold the Point with dist from source object
+		q = new PriorityQueue<Point>(new Comparator<Point>() {
+			public int compare(Point p1, Point p2) {
+				int distanceFromSource =
+			}
+		});
+		q.offer(source);
 	}
 
 	private Content getContent(Point point) {
@@ -99,4 +106,4 @@ public class DijkstraAlgorithm implements PathfindingAlgorithm {
 	public int[][] getDistances() {
 		return distances;
 	}
-}
+}*/

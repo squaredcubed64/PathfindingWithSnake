@@ -24,4 +24,22 @@ public class Utils {
 	public static void place(Content content, Point point, Content[][] grid) {
 		grid[point.y][point.x] = content;
 	}
+
+	public static Content[][] emptyGrid(int width, int height) {
+		Content[][] out = new Content[height][width];
+		for (Content[] row: out)
+			Arrays.fill(row, Content.EMPTY);
+		return out;
+	}
+
+	public static Content[][] copyOf(Content[][] grid) {
+		if (grid == null) {
+			return null;
+		}
+		final Content[][] copy = new Content[grid.length][grid[0].length];
+		for (int i = 0; i < grid.length; i++) {
+			System.arraycopy(grid[i], 0, copy[i], 0, grid[i].length);
+		}
+		return copy;
+	}
 }
